@@ -1,7 +1,11 @@
-import React from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import Home from "./components/Home";
+import About from "./components/About";
+import Dashboard from "./components/Dashboard";
+import Login from "./components/Login";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
@@ -19,15 +23,31 @@ const AppContent: React.FC = () => {
     );
   }
 
-  return user ? <Dashboard /> : <Login />;
-};
+  if (!user) {
+    return <Login />;
+  }
 
-const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/login" element={<Login />} />
+      </Routes>
+    </>
   );
 };
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
+  );
+}
 
 export default App;
