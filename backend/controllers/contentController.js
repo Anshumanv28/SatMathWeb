@@ -1,6 +1,19 @@
 import { ValidationError } from '../middleware/errorHandler.js';
 import databaseService from '../services/databaseService.js';
 
+// Get all topics
+export const getTopics = async (req, res) => {
+  try {
+    const topics = await databaseService.getTopics();
+    res.json({
+      success: true,
+      data: topics
+    });
+  } catch (error) {
+    throw new ValidationError(`Failed to fetch topics: ${error.message}`);
+  }
+};
+
 // Get all content
 export const getAllContent = async (req, res) => {
   try {
@@ -28,19 +41,6 @@ export const getContentByTopic = async (req, res) => {
   }
 };
 
-// Get all topics
-export const getTopics = async (req, res) => {
-  try {
-    const topics = await databaseService.getTopics();
-    res.json({
-      success: true,
-      data: topics
-    });
-  } catch (error) {
-    throw new ValidationError(`Failed to fetch topics: ${error.message}`);
-  }
-};
-
 // Get content by ID
 export const getContentById = async (req, res) => {
   try {
@@ -58,7 +58,7 @@ export const getContentById = async (req, res) => {
 // Add new content
 export const addContent = async (req, res) => {
   try {
-    const { topic, title, description, content_type } = req.body;
+    const { topic, title, description, content_type, difficulty_level, pdf_url, video_url } = req.body;
     
     // Validate required fields
     if (!topic || !title || !content_type) {
@@ -70,37 +70,42 @@ export const addContent = async (req, res) => {
       throw new ValidationError('Content type must be pdf, video, or both');
     }
     
+    // Validate difficulty_level
+    if (difficulty_level && !['easy', 'medium', 'hard'].includes(difficulty_level)) {
+      throw new ValidationError('Difficulty level must be easy, medium, or hard');
+    }
+    
     // Prepare content data
     const contentData = {
       topic,
       title,
       description: description || '',
-      content_type
+      content_type,
+      difficulty_level: difficulty_level || 'medium'
     };
     
-    // Handle PDF file upload
-    if (req.files && req.files.pdf) {
-      const pdfFile = req.files.pdf;
-      contentData.pdf_data = pdfFile.data;
-      contentData.pdf_filename = pdfFile.name;
+    // Handle PDF URL
+    if (pdf_url) {
+      contentData.pdf_url = pdf_url;
+      contentData.pdf_filename = pdf_url.split('/').pop() || 'document.pdf';
     }
     
     // Handle video URL
-    if (req.body.video_url) {
-      contentData.video_url = req.body.video_url;
+    if (video_url) {
+      contentData.video_url = video_url;
     }
     
-    // Validate that files are present based on content_type
-    if (content_type === 'pdf' && !contentData.pdf_data) {
-      throw new ValidationError('PDF file is required for pdf content type');
+    // Validate that URLs are present based on content_type
+    if (content_type === 'pdf' && !contentData.pdf_url) {
+      throw new ValidationError('PDF URL is required for pdf content type');
     }
     
     if (content_type === 'video' && !contentData.video_url) {
       throw new ValidationError('Video URL is required for video content type');
     }
     
-    if (content_type === 'both' && (!contentData.pdf_data || !contentData.video_url)) {
-      throw new ValidationError('Both PDF file and video URL are required for both content type');
+    if (content_type === 'both' && (!contentData.pdf_url || !contentData.video_url)) {
+      throw new ValidationError('Both PDF URL and video URL are required for both content type');
     }
     
     const newContent = await databaseService.addContent(contentData);
@@ -153,44 +158,78 @@ export const deleteContent = async (req, res) => {
   }
 };
 
-// Get PDF file
-export const getPdfFile = async (req, res) => {
+// User progress methods
+export const getUserProgress = async (req, res) => {
   try {
-    const { id } = req.params;
-    const content = await databaseService.getContentById(id);
-    
-    if (!content.pdf_data) {
-      throw new ValidationError('PDF file not found for this content');
-    }
-    
-    // Set response headers for PDF download
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${content.pdf_filename || 'document.pdf'}"`);
-    
-    // Send PDF data
-    res.send(content.pdf_data);
-  } catch (error) {
-    throw new ValidationError(`Failed to get PDF file: ${error.message}`);
-  }
-};
-
-// Get video URL
-export const getVideoUrl = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const content = await databaseService.getContentById(id);
-    
-    if (!content.video_url) {
-      throw new ValidationError('Video URL not found for this content');
-    }
+    const userId = req.user.id; // From auth middleware
+    const progress = await databaseService.getUserProgress(userId);
     
     res.json({
       success: true,
-      data: {
-        video_url: content.video_url
-      }
+      data: progress
     });
   } catch (error) {
-    throw new ValidationError(`Failed to get video URL: ${error.message}`);
+    throw new ValidationError(`Failed to fetch user progress: ${error.message}`);
+  }
+};
+
+export const getContentProgress = async (req, res) => {
+  try {
+    const userId = req.user.id; // From auth middleware
+    const { contentId } = req.params;
+    const progress = await databaseService.getContentProgress(userId, contentId);
+    
+    res.json({
+      success: true,
+      data: progress
+    });
+  } catch (error) {
+    throw new ValidationError(`Failed to fetch content progress: ${error.message}`);
+  }
+};
+
+export const markContentCompleted = async (req, res) => {
+  try {
+    const userId = req.user.id; // From auth middleware
+    const { contentId } = req.params;
+    const { timeSpent } = req.body;
+    
+    const progress = await databaseService.markContentCompleted(userId, contentId, timeSpent);
+    
+    res.json({
+      success: true,
+      message: 'Content marked as completed',
+      data: progress
+    });
+  } catch (error) {
+    throw new ValidationError(`Failed to mark content as completed: ${error.message}`);
+  }
+};
+
+export const getUserStats = async (req, res) => {
+  try {
+    const userId = req.user.id; // From auth middleware
+    const stats = await databaseService.getUserStats(userId);
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    throw new ValidationError(`Failed to fetch user stats: ${error.message}`);
+  }
+};
+
+export const getTopicStats = async (req, res) => {
+  try {
+    const userId = req.user.id; // From auth middleware
+    const stats = await databaseService.getTopicStats(userId);
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    throw new ValidationError(`Failed to fetch topic stats: ${error.message}`);
   }
 }; 
