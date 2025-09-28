@@ -30,8 +30,8 @@ This guide will help you deploy your SAT Math Web application to Vercel.
 4. Configure the project:
    - **Framework Preset**: Create React App
    - **Root Directory**: Leave empty (uses root)
-   - **Build Command**: `cd frontend && npm run build`
-   - **Output Directory**: `frontend/build`
+   - **Build Command**: Leave empty (vercel.json handles this)
+   - **Output Directory**: Leave empty (vercel.json handles this)
 
 ### Option B: Deploy via Vercel CLI
 
