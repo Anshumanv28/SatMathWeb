@@ -1,0 +1,32 @@
+{
+  "name": "satmathweb",
+  "version": "1.0.0",
+  "description": "SAT Math Web Application - Frontend Only",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm start",
+    "dev": "cd frontend && npm start",
+    "install": "cd frontend && npm install",
+    "postinstall": "cd frontend && npm install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Anshumanv28/SatMathWeb.git"
+  },
+  "keywords": [
+    "sat",
+    "math",
+    "education",
+    "react",
+    "supabase",
+    "vercel"
+  ],
+  "author": "Anshuman & Guneet",
+  "license": "ISC",
+  "homepage": "https://github.com/Anshumanv28/SatMathWeb#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
