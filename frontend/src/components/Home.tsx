@@ -1,10 +1,87 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { awsS3PdfService } from "../services/awsS3PdfService";
+import PDFList from "./PDFList";
+import S3TopicCard from "./S3TopicCard";
 import "./Home.css";
 
 const Home: React.FC = () => {
   const { user } = useAuth();
+  
+  // S3 Topics state
+  const [s3Topics, setS3Topics] = useState<string[]>([]);
+  const [selectedS3Topic, setSelectedS3Topic] = useState<string | null>(null);
+  const [s3TopicsLoading, setS3TopicsLoading] = useState(true);
+
+  useEffect(() => {
+    loadS3Topics();
+  }, []);
+
+  const loadS3Topics = async () => {
+    try {
+      setS3TopicsLoading(true);
+      console.log('Loading S3 topics...');
+      const topicsData = await awsS3PdfService.getAllTopics();
+      setS3Topics(topicsData);
+      console.log('S3 topics loaded:', topicsData);
+    } catch (error) {
+      console.error("Error loading S3 topics:", error);
+      setS3Topics([]);
+    } finally {
+      setS3TopicsLoading(false);
+    }
+  };
+
+  const handleS3TopicClick = (topicName: string) => {
+    console.log('S3 Topic clicked:', topicName);
+    setSelectedS3Topic(topicName);
+  };
+
+  const handleBackToTopics = () => {
+    setSelectedS3Topic(null);
+  };
+
+  // Show S3 topic detail if selected
+  if (selectedS3Topic) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-6">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleBackToTopics}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Back to topics"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="flex items-center space-x-3">
+                  <div className="text-4xl">📚</div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {selectedS3Topic.split(' ').map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                      ).join(' ')}
+                    </h1>
+                    <p className="text-gray-600">SAT Math PDFs and Resources</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <PDFList topic={selectedS3Topic} />
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="home-container">
@@ -19,7 +96,7 @@ const Home: React.FC = () => {
           {user ? (
             <div className="hero-cta">
               <p className="text-green-600 font-medium mb-2">✓ You're signed in!</p>
-              <p className="text-gray-600">Access your personalized study materials</p>
+              <p className="text-gray-600">Access your personalized study materials below</p>
             </div>
           ) : (
             <div className="hero-cta">
@@ -36,57 +113,41 @@ const Home: React.FC = () => {
       <section className="content-sections">
         {/* SAT Math Topics */}
         <div className="section">
-          <h2>SAT Math Topics</h2>
-          <div className="topics-grid">
-            <div className="topic-card">
-              <div className="topic-icon">📐</div>
-              <h3>Algebra</h3>
-              <p>Linear equations, inequalities, functions, and systems of equations</p>
-              <ul>
-                <li>Linear equations and inequalities</li>
-                <li>Functions and their graphs</li>
-                <li>Systems of equations</li>
-                <li>Quadratic functions</li>
-              </ul>
-            </div>
-
-            <div className="topic-card">
-              <div className="topic-icon">📏</div>
-              <h3>Geometry</h3>
-              <p>Lines, angles, triangles, circles, and coordinate geometry</p>
-              <ul>
-                <li>Lines and angles</li>
-                <li>Triangles and polygons</li>
-                <li>Circles and arcs</li>
-                <li>Coordinate geometry</li>
-              </ul>
-            </div>
-
-            <div className="topic-card">
-              <div className="topic-icon">🔢</div>
-              <h3>Advanced Math</h3>
-              <p>Complex numbers, trigonometry, and advanced functions</p>
-              <ul>
-                <li>Complex numbers</li>
-                <li>Trigonometric functions</li>
-                <li>Polynomial functions</li>
-                <li>Exponential and logarithmic functions</li>
-              </ul>
-            </div>
-
-            <div className="topic-card">
-              <div className="topic-icon">📊</div>
-              <h3>Problem Solving & Data Analysis</h3>
-              <p>Statistics, probability, and data interpretation</p>
-              <ul>
-                <li>Statistics and data analysis</li>
-                <li>Probability concepts</li>
-                <li>Ratios and proportions</li>
-                <li>Percentages and rates</li>
-              </ul>
-            </div>
+          <div className="flex items-center justify-between mb-6">
+            <h2>SAT Math Topics</h2>
+            <button
+              onClick={loadS3Topics}
+              className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1 rounded-md transition-colors"
+              title="Refresh topics from S3 bucket"
+            >
+              🔄 Refresh
+            </button>
           </div>
+          
+          {s3TopicsLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading topics from S3 bucket...</p>
+            </div>
+          ) : s3Topics.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-gray-400 text-6xl mb-4">📁</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No topics found</h3>
+              <p className="text-gray-600">Add folders to your S3 bucket to see topics here.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {s3Topics.map((topicName) => (
+                <S3TopicCard
+                  key={topicName}
+                  topicName={topicName}
+                  onClick={() => handleS3TopicClick(topicName)}
+                />
+              ))}
+            </div>
+          )}
         </div>
+
 
         {/* Resources Section */}
         <div className="section">

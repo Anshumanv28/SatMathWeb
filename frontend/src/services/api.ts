@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 
 interface Topic {
   name: string;
@@ -131,6 +131,44 @@ class ApiService {
     if (!data.success) throw new Error(data.message);
     return data.data;
   }
+
+  // Storage methods
+  async getPDFsByTopic(topic: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/storage/pdfs/${encodeURIComponent(topic)}`);
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message);
+    return data.data;
+  }
+
+  async getTopicsWithPDFs(): Promise<string[]> {
+    const response = await fetch(`${API_BASE_URL}/storage/topics`);
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message);
+    return data.data;
+  }
+
+  async syncStorageWithDatabase(): Promise<any> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/storage/sync`, {
+      method: 'POST',
+      headers
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message);
+    return data.data;
+  }
+
+  async cleanupOrphanedContent(): Promise<any> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/storage/cleanup`, {
+      method: 'POST',
+      headers
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message);
+    return data.data;
+  }
+
 }
 
 export const apiService = new ApiService();

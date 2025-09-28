@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { parseAuthError } from '../utils/authErrors';
 import './Login.css';
 
 const Login: React.FC = () => {
-  const { signIn, signUp, signInWithGoogle, signInWithFacebook } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle, signInWithFacebook } = useAuth();
+  const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,6 +16,13 @@ const Login: React.FC = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [facebookLoading, setFacebookLoading] = useState(false);
 
+  // Redirect to home if user is already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -22,25 +31,41 @@ const Login: React.FC = () => {
 
     try {
       if (isSignUp) {
-        await signUp(email, password);
-        setSuccess('Account created successfully! Please check your email to verify your account.');
+        const { error } = await signUp(email, password);
+        if (error) {
+          const errorMessage = parseAuthError(error);
+          setError(errorMessage.message || 'An error occurred');
+        } else {
+          setSuccess('Account created successfully! Please check your email to verify your account.');
+        }
       } else {
-        await signIn(email, password);
-        setSuccess('Signed in successfully!');
+        const { error } = await signIn(email, password);
+        if (error) {
+          const errorMessage = parseAuthError(error);
+          setError(errorMessage.message || 'An error occurred');
+        } else {
+          setSuccess('Signed in successfully! Redirecting...');
+          // The useEffect will handle the redirect when user state updates
+        }
       }
-          } catch (err) {
-        const errorMessage = parseAuthError(err as any);
-        setError(errorMessage.message || 'An error occurred');
-      } finally {
-        setEmailLoading(false);
-      }
+    } catch (err) {
+      const errorMessage = parseAuthError(err as any);
+      setError(errorMessage.message || 'An error occurred');
+    } finally {
+      setEmailLoading(false);
+    }
     };
 
     const handleGoogleSignIn = async () => {
       setError('');
       setGoogleLoading(true);
       try {
-        await signInWithGoogle();
+        const { error } = await signInWithGoogle();
+        if (error) {
+          const errorMessage = parseAuthError(error);
+          setError(errorMessage.message || 'An error occurred');
+        }
+        // OAuth redirects will be handled by the AuthCallback component
       } catch (err) {
         const errorMessage = parseAuthError(err as any);
         setError(errorMessage.message || 'An error occurred');
@@ -53,7 +78,12 @@ const Login: React.FC = () => {
       setError('');
       setFacebookLoading(true);
       try {
-        await signInWithFacebook();
+        const { error } = await signInWithFacebook();
+        if (error) {
+          const errorMessage = parseAuthError(error);
+          setError(errorMessage.message || 'An error occurred');
+        }
+        // OAuth redirects will be handled by the AuthCallback component
       } catch (err) {
         const errorMessage = parseAuthError(err as any);
         setError(errorMessage.message || 'An error occurred');
